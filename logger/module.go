@@ -4,9 +4,15 @@ import (
 	"os"
 	"strings"
 
+	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+)
+
+var MODULE = fx.Module(
+	"LOGGER",
+	fx.Provide(NewLogger),
 )
 
 type Config struct {
