@@ -18,7 +18,7 @@ type Config struct {
 	Password string `yaml:"password"`
 }
 
-func NewPool(config *Config, logger *zap.Logger) *redis.Pool {
+func NewPool(config Config, logger *zap.Logger) *redis.Pool {
 	return &redis.Pool{
 		Dial: func() (redis.Conn, error) {
 			var opts []redis.DialOption
