@@ -37,7 +37,7 @@ func parseHeader(secret []byte, raw string) (*jwt.Token, error) {
 	})
 
 	if token != nil {
-		if _, ok := token.Claims.(jwt.StandardClaims); ok && token.Valid {
+		if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 			return token, nil
 		}
 	}
@@ -86,7 +86,7 @@ func Authenticate(ctx context.Context, _ any, next graphql.Resolver) (any, error
 
 	if token.Valid {
 		c := ctx.Value(ContextKey).(Context)
-		c.UserID, _ = uuid.Parse(token.Claims.(jwt.StandardClaims).Id)
+		c.UserID, _ = uuid.Parse(token.Claims.(jwt.MapClaims)["jti"].(string))
 		return next(context.WithValue(ctx, ContextKey, c))
 	}
 
