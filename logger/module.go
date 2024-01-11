@@ -4,7 +4,6 @@ import (
 	"os"
 	"strings"
 
-	"go.elastic.co/apm/module/apmzap/v2"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
@@ -17,10 +16,9 @@ var MODULE = fx.Module(
 )
 
 type Config struct {
-	APM      bool   `yaml:"-"`
-	Debug    bool   `yaml:"debug"`
-	Encode   string `yaml:"encode"`
-	LogLevel string `yaml:"loglevel"`
+	Debug  bool   `yaml:"debug"`
+	Level  string `yaml:"level"`
+	Encode string `yaml:"encode"`
 }
 
 func Logger(config Config, logger *zap.Logger) fxevent.Logger {
@@ -52,7 +50,7 @@ func NewLogger(config Config) *zap.Logger {
 	}
 
 	var level zapcore.Level
-	if err := level.Set(config.LogLevel); err != nil {
+	if err := level.Set(config.Level); err != nil {
 		_ = level.Set(zapcore.DebugLevel.String())
 	}
 
@@ -61,9 +59,5 @@ func NewLogger(config Config) *zap.Logger {
 		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
 	}
 	var core = zapcore.NewCore(encoder, zapcore.Lock(os.Stdout), zap.NewAtomicLevelAt(level))
-	if config.APM {
-		apm := apmzap.Core{}
-		core = apm.WrapCore(core)
-	}
 	return zap.New(core, options...)
 }
