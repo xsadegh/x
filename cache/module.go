@@ -3,14 +3,13 @@ package cache
 import (
 	"time"
 
-	"github.com/gomodule/redigo/redis"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 var MODULE = fx.Module(
 	"CACHE",
-	fx.Provide(NewPool),
+	fx.Provide(New),
 )
 
 type Config struct {
@@ -18,26 +17,12 @@ type Config struct {
 	Password string `yaml:"password"`
 }
 
-func NewPool(config Config, logger *zap.Logger) *redis.Pool {
-	return &redis.Pool{
-		Dial: func() (redis.Conn, error) {
-			var opts []redis.DialOption
-			if config.Password != "" {
-				opts = append(opts, redis.DialPassword(config.Password))
-			}
-
-			conn, err := redis.Dial("tcp", config.Address, opts...)
-			if err != nil {
-				logger.Fatal("failed to dail redis", zap.Error(err))
-			}
-
-			return conn, err
-		},
-		MaxIdle:   50,
-		MaxActive: 10000,
-		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			_, err := c.Do("PING")
-			return err
-		},
-	}
+func New(config Config) *redis.Client {
+	return redis.NewClient(&redis.Options{
+		ConnMaxIdleTime: -1, MaxRetries: 10, PoolSize: 100,
+		Addr: config.Address, Password: config.Password,
+		PoolTimeout:  2 * time.Minute,
+		ReadTimeout:  2 * time.Minute,
+		WriteTimeout: 1 * time.Minute,
+	})
 }
