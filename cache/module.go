@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"crypto/tls"
+	"net"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -15,14 +17,23 @@ var MODULE = fx.Module(
 type Config struct {
 	Address  string `yaml:"address"`
 	Password string `yaml:"password"`
+	TLSMode  bool   `yaml:"tlsMode"`
 }
 
 func New(config Config) *redis.Client {
-	return redis.NewClient(&redis.Options{
-		ConnMaxIdleTime: -1, MaxRetries: 10, PoolSize: 100,
+	var opts = &redis.Options{
 		Addr: config.Address, Password: config.Password,
-		PoolTimeout:  2 * time.Minute,
-		ReadTimeout:  2 * time.Minute,
-		WriteTimeout: 1 * time.Minute,
-	})
+		ConnMaxIdleTime: -1, MaxRetries: 10, PoolSize: 100,
+	}
+
+	opts.PoolTimeout = 2 * time.Minute
+	opts.ReadTimeout = 2 * time.Minute
+	opts.WriteTimeout = 1 * time.Minute
+
+	if config.TLSMode {
+		host, _, _ := net.SplitHostPort(config.Address)
+		opts.TLSConfig = &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12}
+	}
+
+	return redis.NewClient(opts)
 }
