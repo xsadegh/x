@@ -1,4 +1,4 @@
-package cache
+package stream
 
 import (
 	"github.com/nats-io/nats.go"
