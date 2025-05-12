@@ -1,6 +1,8 @@
 package stream
 
 import (
+	"time"
+
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"go.uber.org/fx"
@@ -21,7 +23,10 @@ func New(config Config) jetstream.JetStream {
 	nc, _ := nats.Connect(
 		config.Address,
 		nats.Name(config.Client),
-		nats.UserCredentials(config.Credentials))
+		nats.MaxReconnects(-1),
+		nats.ReconnectWait(time.Second),
+		nats.UserCredentials(config.Credentials),
+	)
 
 	js, _ := jetstream.New(nc)
 
