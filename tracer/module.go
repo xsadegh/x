@@ -2,14 +2,15 @@ package tracer
 
 import (
 	"context"
+	"time"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/fx"
 )
@@ -20,6 +21,7 @@ var MODULE = fx.Module(
 )
 
 type Config struct {
+	Version  string `yaml:"version"`
 	Service  string `yaml:"service"`
 	Endpoint string `yaml:"endpoint"`
 }
@@ -40,12 +42,19 @@ func NewTracer(config Config) Tracer {
 		otlptracegrpc.NewClient(
 			otlptracegrpc.WithInsecure(),
 			otlptracegrpc.WithEndpoint(config.Endpoint),
+			otlptracegrpc.WithTimeout(5*time.Second),
+			otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
+				Enabled:        true,
+				MaxInterval:    2 * time.Second,
+				MaxElapsedTime: 10 * time.Second,
+			}),
 		),
 	)
 	resources, _ := resource.New(
 		context.Background(),
 		resource.WithAttributes(
-			attribute.String("service.name", config.Service),
+			semconv.ServiceNameKey.String(config.Service),
+			semconv.ServiceVersionKey.String(config.Version),
 		),
 	)
 
