@@ -16,16 +16,18 @@ var MODULE = fx.Module(
 
 type Config struct {
 	Address  string `yaml:"address"`
-	Password string `yaml:"password"`
 	TLSMode  bool   `yaml:"tlsMode"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 func New(config Config) *redis.Client {
-	var opts = &redis.Options{
-		Addr: config.Address, Password: config.Password,
-		ConnMaxIdleTime: -1, MaxRetries: 10, PoolSize: 100,
-	}
+	var opts = &redis.Options{}
 
+	opts.MaxRetries = 0
+	opts.Addr = config.Address
+	opts.Username = config.Username
+	opts.Password = config.Password
 	opts.PoolTimeout = 2 * time.Minute
 	opts.ReadTimeout = 2 * time.Minute
 	opts.WriteTimeout = 1 * time.Minute
