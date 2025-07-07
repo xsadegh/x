@@ -21,7 +21,10 @@ type Config struct {
 }
 
 func New(config Config, logger *zap.Logger) jetstream.JetStream {
-	nc, _ := nats.Connect(
+	var err error
+	var nc *nats.Conn
+	var js jetstream.JetStream
+	nc, err = nats.Connect(
 		config.Address,
 		nats.Name(config.Client),
 		nats.MaxReconnects(-1),
@@ -34,8 +37,14 @@ func New(config Config, logger *zap.Logger) jetstream.JetStream {
 			logger.Info("stream reconnected")
 		}),
 	)
+	if err != nil {
+		logger.Fatal("failed to connect to nats", zap.Error(err))
+	}
 
-	js, _ := jetstream.New(nc)
+	js, err = jetstream.New(nc)
+	if err != nil {
+		logger.Fatal("failed to initialize jetstream", zap.Error(err))
+	}
 
 	return js
 }
