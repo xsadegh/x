@@ -2,11 +2,11 @@ package tracer
 
 import (
 	"context"
-	"time"
+	"crypto/tls"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -24,6 +24,8 @@ type Config struct {
 	Version  string `yaml:"version"`
 	Service  string `yaml:"service"`
 	Endpoint string `yaml:"endpoint"`
+
+	Headers map[string]string `yaml:"headers"`
 }
 
 type Tracer interface {
@@ -37,18 +39,11 @@ type tracer struct {
 }
 
 func NewTracer(config Config) Tracer {
-	exporter, _ := otlptrace.New(
+	exporter, _ := otlptracehttp.New(
 		context.Background(),
-		otlptracegrpc.NewClient(
-			otlptracegrpc.WithInsecure(),
-			otlptracegrpc.WithEndpoint(config.Endpoint),
-			otlptracegrpc.WithTimeout(5*time.Second),
-			otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
-				Enabled:        true,
-				MaxInterval:    2 * time.Second,
-				MaxElapsedTime: 10 * time.Second,
-			}),
-		),
+		otlptracehttp.WithHeaders(config.Headers),
+		otlptracehttp.WithEndpoint(config.Endpoint),
+		otlptracehttp.WithTLSClientConfig(&tls.Config{}),
 	)
 	resources, _ := resource.New(
 		context.Background(),
