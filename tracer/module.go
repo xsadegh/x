@@ -3,9 +3,11 @@ package tracer
 import (
 	"context"
 	"crypto/tls"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -24,6 +26,7 @@ type Config struct {
 	Version  string `yaml:"version"`
 	Service  string `yaml:"service"`
 	Endpoint string `yaml:"endpoint"`
+	Protocol string `yaml:"protocol"`
 
 	Headers map[string]string `yaml:"headers"`
 }
@@ -39,12 +42,31 @@ type tracer struct {
 }
 
 func NewTracer(config Config) Tracer {
-	exporter, _ := otlptracehttp.New(
-		context.Background(),
-		otlptracehttp.WithHeaders(config.Headers),
-		otlptracehttp.WithEndpoint(config.Endpoint),
-		otlptracehttp.WithTLSClientConfig(&tls.Config{}),
-	)
+	var exporter *otlptrace.Exporter
+	if config.Protocol == "grpc" {
+		exporter, _ = otlptrace.New(
+			context.Background(),
+			otlptracegrpc.NewClient(
+				otlptracegrpc.WithInsecure(),
+				otlptracegrpc.WithTimeout(5*time.Second),
+				otlptracegrpc.WithHeaders(config.Headers),
+				otlptracegrpc.WithEndpoint(config.Endpoint),
+				otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
+					Enabled:        true,
+					MaxInterval:    2 * time.Second,
+					MaxElapsedTime: 10 * time.Second,
+				}),
+			),
+		)
+	} else {
+		exporter, _ = otlptracehttp.New(
+			context.Background(),
+			otlptracehttp.WithTimeout(5*time.Second),
+			otlptracehttp.WithHeaders(config.Headers),
+			otlptracehttp.WithEndpoint(config.Endpoint),
+			otlptracehttp.WithTLSClientConfig(&tls.Config{}),
+		)
+	}
 	resources, _ := resource.New(
 		context.Background(),
 		resource.WithAttributes(
