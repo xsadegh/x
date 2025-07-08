@@ -2,7 +2,6 @@ package tracer
 
 import (
 	"context"
-	"crypto/tls"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -27,6 +26,7 @@ type Config struct {
 	Service  string `yaml:"service"`
 	Endpoint string `yaml:"endpoint"`
 	Protocol string `yaml:"protocol"`
+	Insecure bool   `yaml:"insecure"`
 
 	Headers map[string]string `yaml:"headers"`
 }
@@ -44,27 +44,39 @@ type tracer struct {
 func NewTracer(config Config) Tracer {
 	var exporter *otlptrace.Exporter
 	if config.Protocol == "grpc" {
+		var opts []otlptracegrpc.Option
+		if config.Insecure {
+			opts = append(opts, otlptracegrpc.WithInsecure())
+		}
+		opts = append(opts, otlptracegrpc.WithTimeout(5*time.Second))
+		opts = append(opts, otlptracegrpc.WithHeaders(config.Headers))
+		opts = append(opts, otlptracegrpc.WithEndpoint(config.Endpoint))
+		opts = append(opts, otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
+			Enabled:        true,
+			MaxInterval:    2 * time.Second,
+			MaxElapsedTime: 10 * time.Second,
+		}))
 		exporter, _ = otlptrace.New(
 			context.Background(),
-			otlptracegrpc.NewClient(
-				otlptracegrpc.WithInsecure(),
-				otlptracegrpc.WithTimeout(5*time.Second),
-				otlptracegrpc.WithHeaders(config.Headers),
-				otlptracegrpc.WithEndpoint(config.Endpoint),
-				otlptracegrpc.WithRetry(otlptracegrpc.RetryConfig{
-					Enabled:        true,
-					MaxInterval:    2 * time.Second,
-					MaxElapsedTime: 10 * time.Second,
-				}),
-			),
+			otlptracegrpc.NewClient(opts...),
 		)
 	} else {
-		exporter, _ = otlptracehttp.New(
+		var opts []otlptracehttp.Option
+		if config.Insecure {
+			opts = append(opts, otlptracehttp.WithInsecure())
+		}
+		opts = append(opts, otlptracehttp.WithTimeout(5*time.Second))
+		opts = append(opts, otlptracehttp.WithHeaders(config.Headers))
+		opts = append(opts, otlptracehttp.WithEndpoint(config.Endpoint))
+		opts = append(opts, otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
+			Enabled:        true,
+			MaxInterval:    2 * time.Second,
+			MaxElapsedTime: 10 * time.Second,
+		}))
+
+		exporter, _ = otlptrace.New(
 			context.Background(),
-			otlptracehttp.WithTimeout(5*time.Second),
-			otlptracehttp.WithHeaders(config.Headers),
-			otlptracehttp.WithEndpoint(config.Endpoint),
-			otlptracehttp.WithTLSClientConfig(&tls.Config{}),
+			otlptracehttp.NewClient(opts...),
 		)
 	}
 	resources, _ := resource.New(
