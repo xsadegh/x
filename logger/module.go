@@ -25,7 +25,7 @@ type Config struct {
 	Level  string `yaml:"level"`
 	Encode string `yaml:"encode"`
 
-	tracer tracer.Config
+	Tracer tracer.Config `yaml:"-"`
 }
 
 func Logger(config Config, logger *zap.Logger) fxevent.Logger {
@@ -61,7 +61,7 @@ func NewLogger(config Config) *zap.Logger {
 		_ = level.Set(zapcore.DebugLevel.String())
 	}
 
-	token := strings.ReplaceAll(config.tracer.Headers["Authorization"], "Bearer ", "")
+	token := strings.ReplaceAll(config.Tracer.Headers["Authorization"], "Bearer ", "")
 	options := []zap.Option{zap.AddCaller()}
 	if config.Debug {
 		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
@@ -75,15 +75,15 @@ func NewLogger(config Config) *zap.Logger {
 	)
 
 	var dupCore, _ = adapter.New(
-		adapter.SetDataset(config.tracer.Logs),
+		adapter.SetDataset(config.Tracer.Logs),
 		adapter.SetClientOptions(axiom.SetToken(token)),
 		adapter.SetIngestOptions(
-			ingest.SetEventLabel("service", config.tracer.Service),
-			ingest.SetEventLabel("version", config.tracer.Version),
+			ingest.SetEventLabel("service", config.Tracer.Service),
+			ingest.SetEventLabel("version", config.Tracer.Version),
 		),
 	)
 
-	if config.tracer.Logs == "" {
+	if config.Tracer.Logs == "" {
 		return zap.New(core, options...)
 	} else {
 		return zap.New(zapcore.NewTee(core, dupCore), options...)
