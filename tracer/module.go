@@ -22,6 +22,7 @@ var MODULE = fx.Module(
 )
 
 type Config struct {
+	Logs     string `yaml:"logs"`
 	Version  string `yaml:"version"`
 	Service  string `yaml:"service"`
 	Endpoint string `yaml:"endpoint"`

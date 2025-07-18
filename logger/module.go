@@ -10,6 +10,8 @@ import (
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"go.sadegh.io/x/tracer"
 )
 
 var MODULE = fx.Module(
@@ -18,11 +20,11 @@ var MODULE = fx.Module(
 )
 
 type Config struct {
-	Token   string `yaml:"token"`
-	Debug   bool   `yaml:"debug"`
-	Level   string `yaml:"level"`
-	Encode  string `yaml:"encode"`
-	Dataset string `yaml:"dataset"`
+	Debug  bool   `yaml:"debug"`
+	Level  string `yaml:"level"`
+	Encode string `yaml:"encode"`
+
+	tracer tracer.Config
 }
 
 func Logger(config Config, logger *zap.Logger) fxevent.Logger {
@@ -58,20 +60,29 @@ func NewLogger(config Config) *zap.Logger {
 		_ = level.Set(zapcore.DebugLevel.String())
 	}
 
+	token := strings.ReplaceAll(config.tracer.Headers["Authorization"], "Bearer ", "")
 	options := []zap.Option{zap.AddCaller()}
 	if config.Debug {
 		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
 	}
 	options = append(options)
-	tracer, _ := adapter.New(
-		adapter.SetDataset(config.Dataset),
-		adapter.SetClientOptions(axiom.SetToken(config.Token)),
-	)
-	var core = zapcore.NewCore(encoder, zapcore.Lock(os.Stdout), zap.NewAtomicLevelAt(level))
 
-	if config.Token != "" {
-		return zap.New(zapcore.NewTee(core, tracer), options...)
-	} else {
+	var core = zapcore.NewCore(
+		encoder,
+		zapcore.Lock(os.Stdout),
+		zap.NewAtomicLevelAt(level),
+	)
+
+	var dupCore, _ = adapter.New(
+		adapter.SetDataset(config.tracer.Logs),
+		adapter.SetClientOptions(
+			axiom.SetToken(token),
+		),
+	)
+
+	if config.tracer.Logs == "" {
 		return zap.New(core, options...)
+	} else {
+		return zap.New(zapcore.NewTee(core, dupCore), options...)
 	}
 }
