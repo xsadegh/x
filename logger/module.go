@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 
+	adapter "github.com/axiomhq/axiom-go/adapters/zap"
+	"github.com/axiomhq/axiom-go/axiom"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
@@ -16,9 +18,11 @@ var MODULE = fx.Module(
 )
 
 type Config struct {
-	Debug  bool   `yaml:"debug"`
-	Level  string `yaml:"level"`
-	Encode string `yaml:"encode"`
+	Token   string `yaml:"token"`
+	Debug   bool   `yaml:"debug"`
+	Level   string `yaml:"level"`
+	Encode  string `yaml:"encode"`
+	Dataset string `yaml:"dataset"`
 }
 
 func Logger(config Config, logger *zap.Logger) fxevent.Logger {
@@ -58,6 +62,16 @@ func NewLogger(config Config) *zap.Logger {
 	if config.Debug {
 		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
 	}
+	options = append(options)
+	tracer, _ := adapter.New(
+		adapter.SetDataset(config.Dataset),
+		adapter.SetClientOptions(axiom.SetToken(config.Token)),
+	)
 	var core = zapcore.NewCore(encoder, zapcore.Lock(os.Stdout), zap.NewAtomicLevelAt(level))
-	return zap.New(core, options...)
+
+	if config.Token != "" {
+		return zap.New(zapcore.NewTee(core, tracer), options...)
+	} else {
+		return zap.New(core, options...)
+	}
 }
