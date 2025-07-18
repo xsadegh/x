@@ -6,6 +6,7 @@ import (
 
 	adapter "github.com/axiomhq/axiom-go/adapters/zap"
 	"github.com/axiomhq/axiom-go/axiom"
+	"github.com/axiomhq/axiom-go/axiom/ingest"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
@@ -75,8 +76,10 @@ func NewLogger(config Config) *zap.Logger {
 
 	var dupCore, _ = adapter.New(
 		adapter.SetDataset(config.tracer.Logs),
-		adapter.SetClientOptions(
-			axiom.SetToken(token),
+		adapter.SetClientOptions(axiom.SetToken(token)),
+		adapter.SetIngestOptions(
+			ingest.SetEventLabel("service", config.tracer.Service),
+			ingest.SetEventLabel("version", config.tracer.Version),
 		),
 	)
 
