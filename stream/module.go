@@ -1,8 +1,6 @@
 package stream
 
 import (
-	"time"
-
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"go.uber.org/fx"
@@ -15,9 +13,9 @@ var MODULE = fx.Module(
 )
 
 type Config struct {
-	Credentials string `yaml:"credentials"`
-	Address     string `yaml:"address"`
-	Client      string `yaml:"client"`
+	Address string `yaml:"address"`
+	Client  string `yaml:"client"`
+	Token   string `yaml:"token"`
 }
 
 func New(config Config, logger *zap.Logger) jetstream.JetStream {
@@ -26,15 +24,14 @@ func New(config Config, logger *zap.Logger) jetstream.JetStream {
 	var js jetstream.JetStream
 	nc, err = nats.Connect(
 		config.Address,
-		nats.Name(config.Client),
 		nats.MaxReconnects(-1),
-		nats.ReconnectWait(time.Second),
-		nats.UserCredentials(config.Credentials),
+		nats.Name(config.Client),
+		nats.Token(config.Token),
 		nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
-			logger.Error("stream disconnected", zap.Error(err))
+			logger.Debug("stream disconnected", zap.Error(err))
 		}),
 		nats.ReconnectHandler(func(nc *nats.Conn) {
-			logger.Info("stream reconnected")
+			logger.Debug("stream reconnected")
 		}),
 	)
 	if err != nil {
