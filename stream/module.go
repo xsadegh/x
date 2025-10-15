@@ -27,12 +27,6 @@ func New(config Config, logger *zap.Logger) jetstream.JetStream {
 		nats.MaxReconnects(-1),
 		nats.Name(config.Client),
 		nats.Token(config.Token),
-		nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
-			logger.Debug("stream disconnected", zap.Error(err))
-		}),
-		nats.ReconnectHandler(func(nc *nats.Conn) {
-			logger.Debug("stream reconnected")
-		}),
 	)
 	if err != nil {
 		logger.Fatal("failed to connect to nats", zap.Error(err))
