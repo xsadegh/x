@@ -16,18 +16,25 @@ type Config struct {
 	Address string `yaml:"address"`
 	Client  string `yaml:"client"`
 	Token   string `yaml:"token"`
+	Creds   string `yaml:"creds"`
 }
 
 func New(config Config, logger *zap.Logger) jetstream.JetStream {
 	var err error
 	var nc *nats.Conn
 	var js jetstream.JetStream
-	nc, err = nats.Connect(
-		config.Address,
-		nats.MaxReconnects(-1),
-		nats.Name(config.Client),
-		nats.Token(config.Token),
-	)
+
+	var opts = []nats.Option{nats.Name(config.Client)}
+
+	if config.Token != "" {
+		opts = append(opts, nats.Token(config.Token))
+	}
+
+	if config.Creds != "" {
+		opts = append(opts, nats.UserCredentials(config.Creds))
+	}
+
+	nc, err = nats.Connect(config.Address, opts...)
 	if err != nil {
 		logger.Fatal("failed to connect to nats", zap.Error(err))
 	}
