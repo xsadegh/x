@@ -13,6 +13,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/fx"
 )
 
@@ -43,6 +44,12 @@ type tracer struct {
 }
 
 func NewTracer(config Config) Tracer {
+	if config.Endpoint == "" {
+		provider := noop.NewTracerProvider()
+		otel.SetTracerProvider(provider)
+		return &tracer{tracer: provider.Tracer("")}
+	}
+
 	var exporter *otlptrace.Exporter
 	if config.Protocol == "grpc" {
 		var opts []otlptracegrpc.Option
@@ -106,6 +113,10 @@ func NewTracer(config Config) Tracer {
 }
 
 func (t *tracer) Stop() error {
+	if t.exporter == nil {
+		return nil
+	}
+
 	return t.exporter.Shutdown(context.Background())
 }
 
