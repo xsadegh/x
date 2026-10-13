@@ -4,15 +4,10 @@ import (
 	"os"
 	"strings"
 
-	adapter "github.com/axiomhq/axiom-go/adapters/zap"
-	"github.com/axiomhq/axiom-go/axiom"
-	"github.com/axiomhq/axiom-go/axiom/ingest"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-
-	"go.sadegh.io/x/tracer"
 )
 
 var MODULE = fx.Module(
@@ -24,8 +19,6 @@ type Config struct {
 	Debug  bool   `yaml:"debug"`
 	Level  string `yaml:"level"`
 	Encode string `yaml:"encode"`
-
-	Tracer tracer.Config `yaml:"-"`
 }
 
 func Logger(config Config, logger *zap.Logger) fxevent.Logger {
@@ -61,12 +54,10 @@ func NewLogger(config Config) *zap.Logger {
 		_ = level.Set(zapcore.DebugLevel.String())
 	}
 
-	token := strings.ReplaceAll(config.Tracer.Headers["Authorization"], "Bearer ", "")
 	options := []zap.Option{zap.AddCaller()}
 	if config.Debug {
 		options = append(options, zap.AddStacktrace(zap.ErrorLevel))
 	}
-	options = append(options)
 
 	var core = zapcore.NewCore(
 		encoder,
@@ -74,18 +65,5 @@ func NewLogger(config Config) *zap.Logger {
 		zap.NewAtomicLevelAt(level),
 	)
 
-	var dupCore, _ = adapter.New(
-		adapter.SetDataset(config.Tracer.Logs),
-		adapter.SetClientOptions(axiom.SetToken(token)),
-		adapter.SetIngestOptions(
-			ingest.SetEventLabel("service", config.Tracer.Service),
-			ingest.SetEventLabel("version", config.Tracer.Version),
-		),
-	)
-
-	if config.Tracer.Logs == "" {
-		return zap.New(core, options...)
-	} else {
-		return zap.New(zapcore.NewTee(core, dupCore), options...)
-	}
+	return zap.New(core, options...)
 }

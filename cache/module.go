@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"net"
 
-	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
 )
@@ -15,7 +14,6 @@ var MODULE = fx.Module(
 )
 
 type Config struct {
-	Trace    bool   `yaml:"trace"`
 	Address  string `yaml:"address"`
 	TLSMode  bool   `yaml:"tlsMode"`
 	Username string `yaml:"username"`
@@ -33,10 +31,5 @@ func New(config Config) *redis.Client {
 		opts.TLSConfig = &tls.Config{ServerName: host, MinVersion: tls.VersionTLS12}
 	}
 
-	rdb := redis.NewClient(opts)
-	if config.Trace {
-		_ = redisotel.InstrumentTracing(rdb)
-		_ = redisotel.InstrumentMetrics(rdb)
-	}
-	return rdb
+	return redis.NewClient(opts)
 }
